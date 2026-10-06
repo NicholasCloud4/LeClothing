@@ -1,26 +1,533 @@
 @import "tailwindcss";
 
+/*
+ * LE Clothing design system.
+ *
+ * Principles: quiet, near-monochrome UI that lets product imagery carry the
+ * color; one restrained sans for UI plus a geometric display face; regular
+ * weights; generous whitespace; hairline borders; square imagery; pill CTAs.
+ *
+ * Layers:
+ *   1. Raw palette        (@theme static)  -> bg-ink, text-paper, ...
+ *   2. Semantic tokens    (:root vars)     -> flip inside .surface-inverse
+ *   3. Tailwind mapping   (@theme inline)  -> bg-background, border-border, ...
+ *   4. Base element styles
+ *   5. Component primitives (shell, section, btn, link, input, grids, media)
+ */
+
+/* `dark:` targets explicit inverse surfaces only; there is no OS-driven dark mode. */
+@custom-variant dark (&:where(.dark, .dark *, .surface-inverse, .surface-inverse *));
+
+/* 1. Raw palette: warm achromatics. Always emitted so :root can reference them. */
+@theme static {
+  --color-ink: #19110b;
+  --color-ink-soft: #3b322b;
+  --color-ink-raised: #2a221c;
+  --color-white: #ffffff;
+  --color-paper: #f6f5f3;
+  --color-paper-deep: #efedea;
+  --color-line: #e1dfdc;
+  --color-line-dark: #3d342d;
+  --color-stone: #6b6560;
+  --color-stone-light: #9a948f;
+  --color-stone-input: #8f8984;
+  --color-alert: #b3261e;
+  --color-confirm: #1e6b3d;
+  --color-caution: #8a5a00;
+}
+
+/* 2. Semantic tokens. Components use these, never raw hex. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: var(--color-white);
+  --foreground: var(--color-ink);
+  --muted: var(--color-paper);
+  --muted-hover: var(--color-paper-deep);
+  --muted-foreground: var(--color-stone);
+  --subtle-foreground: var(--color-stone-light);
+  --border: var(--color-line);
+  --input: var(--color-stone-input);
+  --primary: var(--color-ink);
+  --primary-hover: var(--color-ink-soft);
+  --primary-foreground: var(--color-white);
+  --danger: var(--color-alert);
+  --success: var(--color-confirm);
+  --warning: var(--color-caution);
+  --overlay: rgb(25 17 11 / 0.45);
+
+  /* Responsive layout variables (mapped to spacing utilities below). */
+  --gutter: clamp(1rem, 4vw, 3rem);
+  --section-space: clamp(3rem, 2rem + 4vw, 7.5rem);
+  --grid-gap-x: clamp(0.25rem, 1vw, 1rem);
+  --grid-gap-y: clamp(2rem, 1.5rem + 1.5vw, 3rem);
+  --header-height: 3.5rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@media (width >= 64rem) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --header-height: 4.5rem;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.dark,
+.surface-inverse,
+.hero {
+  --background: var(--color-ink);
+  --foreground: var(--color-white);
+  --muted: var(--color-ink-raised);
+  --muted-hover: var(--color-line-dark);
+  --muted-foreground: #c9c4bf;
+  --subtle-foreground: #8a827b;
+  --border: var(--color-line-dark);
+  --input: #7d746c;
+  --primary: var(--color-white);
+  --primary-hover: #e9e6e2;
+  --primary-foreground: var(--color-ink);
+  --danger: #ff8a80;
+  --success: #7fd1a0;
+  --warning: #f0b45c;
+}
+
+/* 3. Tailwind theme. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-hover: var(--muted-hover);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-geist-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-display: var(--font-jost), "Futura", "Century Gothic", var(--font-geist-sans), sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* px-gutter, py-section, gap-x-grid, h-header, top-header, scroll-mt-header ... */
+  --spacing-gutter: var(--gutter);
+  --spacing-section: var(--section-space);
+  --spacing-grid-x: var(--grid-gap-x);
+  --spacing-grid-y: var(--grid-gap-y);
+  --spacing-header: var(--header-height);
+}
+
+@theme {
+  /* Type scale: small, even UI sizes; fluid display sizes for editorial headings. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-display-sm: clamp(1.5rem, 1.25rem + 1vw, 2rem);
+  --text-display-sm--line-height: 1.2;
+  --text-display-md: clamp(2rem, 1.5rem + 2vw, 3rem);
+  --text-display-md--line-height: 1.1;
+  --text-display-lg: clamp(2.5rem, 1.75rem + 3.5vw, 4.5rem);
+  --text-display-lg--line-height: 1.05;
+
+  --tracking-body: 0.025em;
+  --tracking-display: 0.02em;
+  --tracking-label: 0.1em;
+
+  /* Shapes: imagery stays square-cornered; only controls are rounded. */
+  --radius-button: 9999px;
+  --radius-field: 0.25rem;
+
+  /* Containers (max-w-shell, max-w-content, max-w-reading, max-w-narrow) */
+  --container-shell: 120rem;
+  --container-content: 80rem;
+  --container-reading: 40rem;
+  --container-narrow: 28rem;
+
+  /* Product imagery ratios (aspect-product, aspect-portrait, aspect-editorial) */
+  --aspect-product: 3 / 4;
+  --aspect-portrait: 4 / 5;
+  --aspect-editorial: 16 / 9;
+
+  --ease-luxe: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Hides the scrollbar on horizontal rails while keeping them scrollable. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 4. Base elements. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
+
+  html {
+    scroll-padding-top: var(--header-height);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Lock page scroll while a modal (e.g. the menu drawer) is open. */
+  html:has(dialog[open]:modal) {
+    overflow: hidden;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    line-height: 1.5;
+    letter-spacing: var(--tracking-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: var(--tracking-display);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background-color: var(--foreground);
+    color: var(--background);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* 5. Component primitives. In the components layer so any utility overrides them. */
+@layer components {
+  /* ---- Layout ---- */
+  .shell,
+  .shell-content,
+  .shell-narrow {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+  }
+  .shell {
+    max-width: var(--container-shell);
+  }
+  .shell-content {
+    max-width: calc(var(--container-content) + 2 * var(--gutter));
+  }
+  .shell-narrow {
+    max-width: calc(var(--container-narrow) + 2 * var(--gutter));
+  }
+
+  /* Cancels the shell gutter below md so imagery and grids run edge to edge on phones. */
+  .bleed-mobile {
+    margin-inline: calc(var(--gutter) * -1);
+    @variant md {
+      margin-inline: 0;
+    }
+  }
+
+  .section {
+    padding-block: var(--section-space);
+  }
+  .section-tight {
+    padding-block: calc(var(--section-space) / 2);
+  }
+
+  .surface-inverse {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+  .surface-muted {
+    background-color: var(--muted);
+  }
+
+  /* Three-column header bar: left nav, centered wordmark, right actions. */
+  .header-bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 1rem;
+    height: var(--header-height);
+  }
+  .header-bar > :last-child {
+    justify-self: end;
+  }
+
+  /* ---- Product presentation ---- */
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--grid-gap-x);
+    row-gap: var(--grid-gap-y);
+    @variant md {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @variant xl {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  /* Image well: muted backdrop, square corners, cover-fit media, slow hover zoom. */
+  .media-frame {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--muted);
+    aspect-ratio: var(--aspect-product);
+  }
+  .media-frame > img,
+  .media-frame > video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 700ms var(--ease-luxe);
+  }
+  @media (hover: hover) {
+    .media-frame:hover > img,
+    .group:hover .media-frame > img {
+      transform: scale(1.03);
+    }
+  }
+
+  /* Full-bleed hero: media fills it, content sits at the bottom in inverse colors. */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    align-content: end;
+    min-height: calc(100svh - var(--header-height));
+    overflow: hidden;
+    background-color: var(--background);
+    color: var(--foreground);
+    padding: var(--section-space) var(--gutter);
+  }
+  .hero-media {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      to top,
+      rgb(25 17 11 / 0.65),
+      rgb(25 17 11 / 0.3) 45%,
+      transparent 75%
+    );
+    pointer-events: none;
+  }
+
+  .price {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Typography ---- */
+  .text-display {
+    font-family: var(--font-display);
+    font-size: var(--text-display-lg);
+    line-height: var(--text-display-lg--line-height);
+    letter-spacing: var(--tracking-display);
+    font-weight: 400;
+  }
+  .heading-1 {
+    font-family: var(--font-display);
+    font-size: var(--text-display-md);
+    line-height: var(--text-display-md--line-height);
+  }
+  .heading-2 {
+    font-family: var(--font-display);
+    font-size: var(--text-display-sm);
+    line-height: var(--text-display-sm--line-height);
+  }
+  .heading-3 {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-weight: 500;
+    letter-spacing: var(--tracking-body);
+  }
+  .eyebrow {
+    font-size: var(--text-xs);
+    line-height: var(--text-xs--line-height);
+    font-weight: 500;
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+  }
+
+  /* ---- Links ---- */
+  .link {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.3em;
+    text-decoration-color: currentColor;
+    transition: text-decoration-color 200ms var(--ease-luxe);
+  }
+  .link:hover {
+    text-decoration-color: transparent;
+  }
+  .link-reveal {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.3em;
+    text-decoration-color: transparent;
+    transition: text-decoration-color 200ms var(--ease-luxe);
+  }
+  .link-reveal:hover,
+  .link-reveal[aria-current="page"] {
+    text-decoration-color: currentColor;
+  }
+  .link-muted {
+    color: var(--muted-foreground);
+    transition: color 200ms var(--ease-luxe);
+  }
+  .link-muted:hover {
+    color: var(--foreground);
+  }
+
+  /* ---- Buttons ---- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding-inline: 1.75rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-button);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: var(--tracking-body);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      background-color 200ms var(--ease-luxe),
+      border-color 200ms var(--ease-luxe),
+      color 200ms var(--ease-luxe);
+  }
+  .btn:focus-visible {
+    outline-offset: 3px;
+  }
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    pointer-events: none;
+    border-color: transparent;
+    background-color: var(--muted);
+    color: var(--subtle-foreground);
+  }
+
+  .btn-primary {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+  }
+  .btn-primary:hover {
+    background-color: var(--primary-hover);
+  }
+  .btn-secondary {
+    background-color: transparent;
+    border-color: var(--foreground);
+    color: var(--foreground);
+  }
+  .btn-secondary:hover {
+    background-color: var(--muted);
+  }
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--foreground);
+  }
+  .btn-ghost:hover {
+    background-color: var(--muted);
+  }
+
+  .btn-sm {
+    height: 2.5rem;
+    padding-inline: 1.25rem;
+    font-size: var(--text-xs);
+  }
+  .btn-lg {
+    height: 3.5rem;
+    padding-inline: 2.25rem;
+  }
+  .btn-block {
+    width: 100%;
+  }
+  .btn-icon {
+    width: 3rem;
+    padding-inline: 0;
+  }
+  .btn-icon.btn-sm {
+    width: 2.5rem;
+  }
+
+  /* ---- Form fields ---- */
+  .input {
+    width: 100%;
+    height: 3rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--input);
+    border-radius: var(--radius-field);
+    background-color: var(--background);
+    color: var(--foreground);
+    /* 16px on phones prevents iOS focus zoom. */
+    font-size: var(--text-base);
+    transition: border-color 200ms var(--ease-luxe);
+    @variant md {
+      font-size: var(--text-sm);
+    }
+  }
+  .input::placeholder {
+    color: var(--subtle-foreground);
+  }
+  .input:focus-visible {
+    outline: none;
+    border-color: var(--foreground);
+    box-shadow: 0 0 0 1px var(--foreground);
+  }
+  .input[aria-invalid="true"] {
+    border-color: var(--danger);
+  }
+  .input:disabled {
+    cursor: not-allowed;
+    background-color: var(--muted);
+    color: var(--subtle-foreground);
+  }
 }
