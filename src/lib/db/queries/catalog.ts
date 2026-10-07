@@ -15,7 +15,7 @@ export function productTag(slug: string) {
   return `product:${slug}`;
 }
 
-const withRelations = {
+export const withRelations = {
   category: { columns: { slug: true, name: true } },
   images: {
     columns: { url: true, alt: true },
@@ -27,13 +27,13 @@ const withRelations = {
   },
 } as const;
 
-type ProductWithRelations = NonNullable<Awaited<ReturnType<typeof findProduct>>>;
+export type ProductWithRelations = NonNullable<Awaited<ReturnType<typeof findProduct>>>;
 
 function findProduct(slug: string) {
   return db.query.products.findFirst({ where: (product, { eq }) => eq(product.slug, slug), with: withRelations });
 }
 
-function toProduct(row: ProductWithRelations): Product {
+export function toProduct(row: ProductWithRelations): Product {
   return {
     slug: row.slug,
     name: row.name,
@@ -79,21 +79,6 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
     limit,
   });
   return rows.map(toProduct);
-}
-
-/** Products in the order the slugs are given; unknown slugs are skipped. */
-export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
-  "use cache";
-  cacheLife("hours");
-  cacheTag(CATALOG_TAG);
-
-  if (slugs.length === 0) return [];
-  const rows = await db.query.products.findMany({
-    where: (product, { inArray }) => inArray(product.slug, slugs),
-    with: withRelations,
-  });
-  const bySlug = new Map(rows.map((row) => [row.slug, toProduct(row)]));
-  return slugs.flatMap((slug) => bySlug.get(slug) ?? []);
 }
 
 /** Same-category styles first, then the rest of the catalog, newest first within each. */

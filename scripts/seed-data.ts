@@ -356,3 +356,53 @@ export const products: SeedProduct[] = [
     images: gallery("1539109136881-3be0616acf4b", "Double-Faced Wool Coat", "Woman in a powder blue double-faced wool coat"),
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Collections: editorial groupings, in display order. `productSlugs` must exist in `products`.
+
+export type SeedCollection = {
+  slug: string;
+  title: string;
+  description: string;
+  sortOrder: number;
+  productSlugs: string[];
+};
+
+export const collections: SeedCollection[] = [
+  {
+    slug: "essentials",
+    title: "The Essentials",
+    description: "Wardrobe foundations, cut to last and made to be worn on repeat.",
+    sortOrder: 0,
+    productSlugs: [
+      "essential-cotton-tee",
+      "contrast-stitch-tee",
+      "tailored-wool-suit",
+      "leather-rider-jacket",
+      "brushed-cotton-sweatshirt",
+      "double-faced-wool-coat",
+    ],
+  },
+  {
+    slug: "autumn-winter",
+    title: "Autumn–Winter Collection",
+    description: "Coats, leather and tailoring for the colder months, dressed for the evening.",
+    sortOrder: 1,
+    productSlugs: [
+      "belted-wool-coat",
+      "double-faced-wool-coat",
+      "leather-biker-jacket",
+      "leather-rider-jacket",
+      "tailored-wool-suit",
+      "suede-ankle-boots",
+      "open-knit-poncho",
+    ],
+  },
+  {
+    slug: "knitwear",
+    title: "The Knitwear Edit",
+    description: "Soft, layered pieces in a palette of oat, stone and cocoa.",
+    sortOrder: 2,
+    productSlugs: ["open-knit-poncho", "brushed-cotton-sweatshirt"],
+  },
+];

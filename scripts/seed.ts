@@ -9,7 +9,7 @@ import { inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "../src/lib/db/schema";
-import { categories, products } from "./seed-data";
+import { categories, collections, products } from "./seed-data";
 
 // Builds its own client instead of importing `@/lib/db`, which needs the env before it loads.
 // Same precedence as Next.js: .env.local wins over .env.
@@ -26,6 +26,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const categoryId = (slug: string) => sql<number>`(select id from ${schema.categories} where slug = ${slug})`;
 const productId = (slug: string) => sql<number>`(select id from ${schema.products} where slug = ${slug})`;
+const collectionId = (slug: string) => sql<number>`(select id from ${schema.collections} where slug = ${slug})`;
 
 async function main() {
   const now = Date.now();
@@ -34,6 +35,11 @@ async function main() {
     .select({ id: schema.products.id })
     .from(schema.products)
     .where(inArray(schema.products.slug, productSlugs));
+
+  const seededCollectionIds = db
+    .select({ id: schema.collections.id })
+    .from(schema.collections)
+    .where(inArray(schema.collections.slug, collections.map((collection) => collection.slug)));
 
   const categoryUpsert = db
     .insert(schema.categories)
@@ -101,6 +107,31 @@ async function main() {
         })),
       ),
     ),
+    db
+      .insert(schema.collections)
+      .values(collections.map(({ slug, title, description, sortOrder }) => ({ slug, title, description, sortOrder })))
+      .onConflictDoUpdate({
+        target: schema.collections.slug,
+        set: {
+          title: sql`excluded.title`,
+          description: sql`excluded.description`,
+          sortOrder: sql`excluded.sort_order`,
+          updatedAt: sql`now()`,
+        },
+      }),
+    // Membership is replaced wholesale for the seeded collections, like images and stock.
+    db
+      .delete(schema.collectionProducts)
+      .where(inArray(schema.collectionProducts.collectionId, seededCollectionIds)),
+    db.insert(schema.collectionProducts).values(
+      collections.flatMap((collection) =>
+        collection.productSlugs.map((slug, position) => ({
+          collectionId: collectionId(collection.slug),
+          productId: productId(slug),
+          position,
+        })),
+      ),
+    ),
   ];
 
   // Runs as a single transaction over Neon's HTTP driver.
@@ -109,7 +140,7 @@ async function main() {
   const imageCount = products.reduce((total, product) => total + product.images.length, 0);
   const sizeCount = products.reduce((total, product) => total + product.sizes.length, 0);
   console.log(
-    `Seeded ${categories.length} categories, ${products.length} products, ${imageCount} images, ${sizeCount} stock rows.`,
+    `Seeded ${categories.length} categories, ${products.length} products, ${imageCount} images, ${sizeCount} stock rows, ${collections.length} collections.`,
   );
 }
 

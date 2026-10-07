@@ -5,8 +5,9 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { ProductCard } from "@/components/product-card";
 import { ProductRail } from "@/components/product-rail";
 import { SectionHeading } from "@/components/section-heading";
-import { boutique, collections, essentialSlugs, features, hero } from "@/lib/content";
-import { getNewArrivals, getProductsBySlugs } from "@/lib/db/queries/catalog";
+import { boutique, collections, features, hero } from "@/lib/content";
+import { getNewArrivals } from "@/lib/db/queries/catalog";
+import { getCollection } from "@/lib/db/queries/collections";
 
 const services = [
   { icon: TruckIcon, title: "Complimentary Shipping", body: "On every order, delivered in signature packaging." },
@@ -153,7 +154,7 @@ function FeaturedCollections() {
 }
 
 async function Essentials() {
-  const essentials = await getProductsBySlugs(essentialSlugs);
+  const essentials = (await getCollection("essentials"))?.products ?? [];
 
   return (
     <section aria-labelledby="essentials-title" className="shell section">

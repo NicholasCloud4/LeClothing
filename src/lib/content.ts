@@ -70,16 +70,6 @@ export const collections: Collection[] = [
   },
 ];
 
-/** Hand-picked products for "The Essentials" rail, in display order. */
-export const essentialSlugs = [
-  "essential-cotton-tee",
-  "contrast-stitch-tee",
-  "tailored-wool-suit",
-  "leather-rider-jacket",
-  "brushed-cotton-sweatshirt",
-  "double-faced-wool-coat",
-];
-
 export const features: Feature[] = [
   {
     eyebrow: "Featured Collection",
