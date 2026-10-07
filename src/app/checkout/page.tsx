@@ -9,19 +9,19 @@ import { getCart } from "@/lib/db/queries/cart";
 
 export const metadata: Metadata = { title: "Checkout" };
 
-export default function CheckoutPage() {
+export default function CheckoutPage({ searchParams }: PageProps<"/checkout">) {
   return (
     <div className="shell section">
       <h1 className="heading-1 mb-8 text-center">Checkout</h1>
       <Suspense fallback={<CheckoutSkeleton />}>
-        <CheckoutContents />
+        <CheckoutContents searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function CheckoutContents() {
-  const [cart, session] = await Promise.all([getCart(), getSession()]);
+async function CheckoutContents({ searchParams }: Pick<PageProps<"/checkout">, "searchParams">) {
+  const [cart, session, { payment }] = await Promise.all([getCart(), getSession(), searchParams]);
   if (!hasPurchasableLines(cart)) redirect("/cart");
 
   const saved = session ? await getAddressesForUser(session.user.id) : null;
@@ -31,6 +31,7 @@ async function CheckoutContents() {
       // Sold-out lines are left out of the order, as the bag page says.
       lines={cart.lines.filter((line) => purchasableQuantity(line) > 0)}
       defaultEmail={session?.user.email ?? ""}
+      paymentCancelled={payment === "cancelled"}
       savedAddresses={
         saved &&
         saved.map(({ id, fullName, line1, line2, city, region, postalCode, country, phone }) => ({

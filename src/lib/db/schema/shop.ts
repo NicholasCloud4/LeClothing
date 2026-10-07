@@ -122,6 +122,17 @@ export const orders = pgTable(
     shipPostalCode: text("ship_postal_code").notNull(),
     shipCountry: text("ship_country").notNull(),
     shipPhone: text("ship_phone"),
+    /** Null for orders placed before Stripe, and briefly while the session is being created. */
+    stripeCheckoutSessionId: text("stripe_checkout_session_id").unique(),
+    stripePaymentIntentId: text("stripe_payment_intent_id").unique(),
+    /** The bag this order came from: its bought lines are removed on payment, and one open checkout per bag. */
+    cartId: uuid("cart_id").references(() => carts.id, { onDelete: "set null" }),
+    /** Stock is held for a pending order until this time (the Checkout Session's `expires_at`). */
+    reservedUntil: timestamp("reserved_until", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    /** `expired`, `payment_failed`, `superseded` or `session_error`. */
+    cancelReason: text("cancel_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -130,6 +141,8 @@ export const orders = pgTable(
   },
   (table) => [
     index("orders_user_id_created_at_idx").on(table.userId, table.createdAt.desc()),
+    index("orders_status_reserved_until_idx").on(table.status, table.reservedUntil),
+    index("orders_cart_id_idx").on(table.cartId),
     check(
       "orders_amounts_non_negative",
       sql`${table.subtotalCents} >= 0 and ${table.shippingCents} >= 0 and ${table.totalCents} >= 0`,
@@ -159,6 +172,14 @@ export const orderItems = pgTable(
     check("order_items_quantity_positive", sql`${table.quantity} > 0`),
   ],
 );
+
+/** Stripe webhook events we have seen. `processed_at` stays null until the handler finished, so a retry re-runs it. */
+export const stripeEvents = pgTable("stripe_events", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+});
 
 export const addressesRelations = relations(addresses, ({ one }) => ({
   user: one(user, { fields: [addresses.userId], references: [user.id] }),

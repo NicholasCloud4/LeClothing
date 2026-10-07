@@ -6,7 +6,7 @@ import { AddressFields } from "@/components/address-fields";
 import { FormField } from "@/components/form-field";
 import { OrderLines, OrderTotals } from "@/components/order-lines";
 import type { AddressValues } from "@/lib/address";
-import { placeOrder, type CheckoutState } from "@/lib/actions/checkout";
+import { startCheckout, type CheckoutState } from "@/lib/actions/checkout";
 import {
   cartSubtotalCents,
   purchasableQuantity,
@@ -25,12 +25,14 @@ type CheckoutFormProps = {
   defaultEmail: string;
   /** Null for guests, who can't save addresses. */
   savedAddresses: CheckoutAddress[] | null;
+  /** The shopper came back from Stripe without paying. */
+  paymentCancelled?: boolean;
 };
 
 const initialState: CheckoutState = {};
 
-export function CheckoutForm({ lines, defaultEmail, savedAddresses }: CheckoutFormProps) {
-  const [state, formAction, pending] = useActionState(placeOrder, initialState);
+export function CheckoutForm({ lines, defaultEmail, savedAddresses, paymentCancelled }: CheckoutFormProps) {
+  const [state, formAction, pending] = useActionState(startCheckout, initialState);
   const [method, setMethod] = useState<ShippingMethod>(
     (state.values?.shippingMethod as ShippingMethod | undefined) ?? "standard",
   );
@@ -67,6 +69,11 @@ export function CheckoutForm({ lines, defaultEmail, savedAddresses }: CheckoutFo
       <input type="hidden" name="expectedTotalCents" value={subtotal + shipping} />
 
       <div className="flex flex-col gap-10">
+        {paymentCancelled && !state.error && (
+          <p role="status" className="border p-4">
+            Payment wasn&apos;t completed and nothing was charged. Your bag is just as you left it.
+          </p>
+        )}
         {state.error && (
           <div role="alert" className="border border-danger p-4 text-danger">
             <p>{state.error}</p>
@@ -189,10 +196,10 @@ export function CheckoutForm({ lines, defaultEmail, savedAddresses }: CheckoutFo
           <OrderTotals subtotalCents={subtotal} shippingCents={shipping} totalCents={subtotal + shipping} />
         </div>
         <p className="mt-5 text-muted-foreground">
-          Payment isn&apos;t collected yet. Placing this order reserves your items and nothing is charged.
+          You&apos;ll pay securely on the next page, powered by Stripe. Your items are held for 30 minutes.
         </p>
         <button type="submit" className="btn btn-primary btn-lg btn-block mt-6" disabled={pending}>
-          {pending ? "Placing your order…" : "Place order"}
+          {pending ? "Preparing payment…" : "Continue to payment"}
         </button>
         <Link href="/cart" className="link mt-5 block text-center">
           Back to bag

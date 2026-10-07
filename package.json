@@ -14,7 +14,9 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "db:cleanup-carts": "tsx scripts/cleanup-carts.ts",
-    "auth:generate": "npx auth@latest generate --config src/lib/auth.ts --output src/lib/db/schema/auth.ts"
+    "orders:expire-stale": "tsx --conditions=react-server scripts/expire-stale-checkouts.ts",
+    "auth:generate": "npx auth@latest generate --config src/lib/auth.ts --output src/lib/db/schema/auth.ts",
+    "auth:set-role": "tsx scripts/set-role.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -24,6 +26,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "stripe": "^22.6.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {

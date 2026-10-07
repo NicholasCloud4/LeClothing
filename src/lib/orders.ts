@@ -5,7 +5,7 @@ import type { ShippingMethod } from "@/lib/cart";
 export type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "Order received",
+  pending: "Awaiting payment",
   paid: "Paid",
   fulfilled: "Shipped",
   cancelled: "Cancelled",

@@ -1,9 +1,10 @@
 import "server-only";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { auth } from "@/lib/auth";
+import { isAdmin } from "@/lib/roles";
 
 /** The signed-in session, or null. Reads request headers, so call it inside a `<Suspense>` boundary. */
 export async function getSession() {
@@ -19,4 +20,11 @@ export async function requireUser(returnTo?: string) {
     redirect(returnTo ? `/account/sign-in?next=${encodeURIComponent(returnTo)}` : "/account/sign-in");
   }
   return session.user;
+}
+
+/** Admin pages, queries and actions call this. Signed out goes to sign-in; signed in without the role gets a 404. */
+export async function requireAdmin(returnTo?: string) {
+  const user = await requireUser(returnTo);
+  if (!isAdmin(user)) notFound();
+  return user;
 }

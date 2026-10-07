@@ -9,14 +9,18 @@ import { z } from "zod";
 import { addressErrors, addressSchema, readAddressValues, type AddressErrors, type AddressValues } from "@/lib/address";
 import { getSession } from "@/lib/auth-session";
 import { cartSubtotalCents, purchasableQuantity, SHIPPING_METHOD_IDS, shippingCents } from "@/lib/cart";
+import { endOpenCheckoutsForCart } from "@/lib/checkout-reconcile";
 import { db } from "@/lib/db";
 import { isOutOfStockError } from "@/lib/db/errors";
+import { cancelOrder } from "@/lib/db/mutations/orders";
 import { CATALOG_TAG } from "@/lib/db/queries/catalog";
 import { findCartId, getCart } from "@/lib/db/queries/cart";
 import { getAddressesForUser } from "@/lib/db/queries/addresses";
 import { LAST_ORDER_COOKIE } from "@/lib/db/queries/orders";
-import { addresses, cartItems, orderItems, orders, productStock } from "@/lib/db/schema";
+import { addresses, orderItems, orders, productStock } from "@/lib/db/schema";
 import { generateOrderNumber } from "@/lib/orders";
+import { CHECKOUT_HOLD_MS, checkoutLineItems, INTEGRATION_IDENTIFIER, shippingOption } from "@/lib/payments";
+import { stripe } from "@/lib/stripe";
 
 export type CheckoutState = {
   error?: string;
@@ -42,12 +46,15 @@ function text(formData: FormData, name: string) {
 }
 
 /**
- * Places the order. Everything that matters is decided here from the database, not from the form: prices come
- * from `products`, quantities from the bag, and the stock decrement runs in the same transaction as the insert.
- * `product_stock` has `CHECK (quantity >= 0)`, so if any line is oversold the whole batch rolls back.
- * No payment is taken yet: the order is created as `pending`.
+ * Creates the order, holds its stock, and sends the shopper to Stripe to pay. Everything that matters is decided
+ * here from the database, not from the form: prices come from `products`, quantities from the bag, and the stock
+ * decrement runs in the same batch as the insert. `product_stock` has `CHECK (quantity >= 0)`, so if any line is
+ * oversold the whole batch rolls back before Stripe is involved.
+ *
+ * The order stays `pending` until Stripe confirms payment (webhook or success page, see `checkout-reconcile.ts`).
+ * The bag is left alone until then, so backing out of Stripe loses nothing.
  */
-export async function placeOrder(_previous: CheckoutState, formData: FormData): Promise<CheckoutState> {
+export async function startCheckout(_previous: CheckoutState, formData: FormData): Promise<CheckoutState> {
   const values = {
     ...readAddressValues(formData),
     email: text(formData, "email"),
@@ -69,10 +76,16 @@ export async function placeOrder(_previous: CheckoutState, formData: FormData): 
   const { email, shippingMethod, expectedTotalCents, ...address } = parsed.data;
 
   const session = await getSession();
-  const cart = await getCart();
   const cartId = await findCartId();
+  if (!cartId) return { error: "Your bag is empty, or everything in it has sold out.", bagChanged: true, values };
+
+  // A checkout this bag already started (another tab, or a return from Stripe) gives its stock back first, so the
+  // bag is priced against real availability and never holds stock twice.
+  if (await endOpenCheckoutsForCart(cartId)) updateTag(CATALOG_TAG);
+
+  const cart = await getCart();
   const lines = cart.lines.filter((line) => purchasableQuantity(line) > 0);
-  if (!cartId || lines.length === 0) {
+  if (lines.length === 0) {
     return { error: "Your bag is empty, or everything in it has sold out.", bagChanged: true, values };
   }
 
@@ -84,12 +97,25 @@ export async function placeOrder(_previous: CheckoutState, formData: FormData): 
   const userId = session?.user.id ?? null;
   const orderNumber = generateOrderNumber();
   const orderId = sql<number>`(select id from ${orders} where order_number = ${orderNumber})`;
+  const reservedUntil = new Date(Date.now() + CHECKOUT_HOLD_MS);
+  const items = lines.map((line) => ({
+    productId: line.productId,
+    slug: line.slug,
+    name: line.name,
+    color: line.color,
+    size: line.size,
+    imageUrl: line.image?.src ?? null,
+    unitPriceCents: line.unitPriceCents,
+    quantity: purchasableQuantity(line),
+  }));
 
   const queries: [BatchItem<"pg">, ...BatchItem<"pg">[]] = [
     db.insert(orders).values({
       orderNumber,
       userId,
       email,
+      cartId,
+      reservedUntil,
       shippingMethod,
       subtotalCents: subtotal,
       shippingCents: shipping,
@@ -103,26 +129,13 @@ export async function placeOrder(_previous: CheckoutState, formData: FormData): 
       shipCountry: address.country,
       shipPhone: address.phone,
     }),
-    db.insert(orderItems).values(
-      lines.map((line) => ({
-        orderId,
-        productId: line.productId,
-        slug: line.slug,
-        name: line.name,
-        color: line.color,
-        size: line.size,
-        imageUrl: line.image?.src ?? null,
-        unitPriceCents: line.unitPriceCents,
-        quantity: purchasableQuantity(line),
-      })),
-    ),
-    ...lines.map((line) =>
+    db.insert(orderItems).values(items.map((item) => ({ orderId, ...item }))),
+    ...items.map((item) =>
       db
         .update(productStock)
-        .set({ quantity: sql`${productStock.quantity} - ${purchasableQuantity(line)}` })
-        .where(and(eq(productStock.productId, line.productId), eq(productStock.size, line.size))),
+        .set({ quantity: sql`${productStock.quantity} - ${item.quantity}` })
+        .where(and(eq(productStock.productId, item.productId), eq(productStock.size, item.size))),
     ),
-    db.delete(cartItems).where(eq(cartItems.cartId, cartId)),
   ];
 
   if (userId && formData.get("saveAddress") === "on") {
@@ -154,9 +167,40 @@ export async function placeOrder(_previous: CheckoutState, formData: FormData): 
     throw error;
   }
 
-  // Product pages and collections cache stock for an hour; expire it now so sold-out sizes show immediately.
+  // Product pages and collections cache stock for an hour; expire it now so held sizes show immediately.
   updateTag(CATALOG_TAG);
 
+  let checkoutUrl: string;
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const checkout = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        line_items: checkoutLineItems(items),
+        shipping_options: [shippingOption(shippingMethod)],
+        customer_email: email,
+        client_reference_id: orderNumber,
+        metadata: { orderNumber },
+        payment_intent_data: { metadata: { orderNumber } },
+        expires_at: Math.floor(reservedUntil.getTime() / 1000),
+        success_url: `${appUrl}/checkout/confirmation/${orderNumber}?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${appUrl}/checkout/cancel?order=${orderNumber}`,
+        integration_identifier: INTEGRATION_IDENTIFIER,
+      },
+      // One session per order, even if this request is retried.
+      { idempotencyKey: `checkout-${orderNumber}` },
+    );
+    if (!checkout.url) throw new Error(`Stripe returned no URL for session ${checkout.id}`);
+    await db.update(orders).set({ stripeCheckoutSessionId: checkout.id }).where(eq(orders.orderNumber, orderNumber));
+    checkoutUrl = checkout.url;
+  } catch (error) {
+    console.error(`Could not start payment for order ${orderNumber}`, error);
+    // Nothing can be paid for this order, so give its stock back straight away.
+    if (await cancelOrder(orderNumber, "session_error")) updateTag(CATALOG_TAG);
+    return { error: "We couldn't start the payment. Nothing was charged; please try again.", values };
+  }
+
+  // A guest has no account, so this cookie is what lets them see the order's confirmation page.
   (await cookies()).set(LAST_ORDER_COOKIE, orderNumber, {
     httpOnly: true,
     sameSite: "lax",
@@ -164,5 +208,5 @@ export async function placeOrder(_previous: CheckoutState, formData: FormData): 
     path: "/",
     maxAge: 60 * 60 * 24,
   });
-  redirect(`/checkout/confirmation/${orderNumber}`);
+  redirect(checkoutUrl);
 }
