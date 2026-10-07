@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { safeNextPath } from "@/lib/auth-session";
+import { safeNextPath } from "@/lib/paths";
 import { mergeGuestCart } from "@/lib/db/mutations/cart";
 
 export type AuthFormState = {

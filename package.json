@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "db:cleanup-carts": "tsx scripts/cleanup-carts.ts",
     "auth:generate": "npx auth@latest generate --config src/lib/auth.ts --output src/lib/db/schema/auth.ts"
   },
   "dependencies": {
@@ -35,6 +37,8 @@
     "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
   }
 }

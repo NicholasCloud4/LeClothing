@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AuthForm } from "@/components/auth-form";
-import { getSession, safeNextPath } from "@/lib/auth-session";
+import { getSession } from "@/lib/auth-session";
+import { safeNextPath } from "@/lib/paths";
 
 type AuthPageProps = {
   mode: "sign-in" | "sign-up";
