@@ -144,7 +144,12 @@ function ProductInfo({ product }: { product: Product }) {
         </p>
       </header>
 
-      <ProductPurchase productName={product.name} sizes={product.sizes} oneSize={isOneSize(product)} />
+      <ProductPurchase
+        productSlug={product.slug}
+        productName={product.name}
+        sizes={product.sizes}
+        oneSize={isOneSize(product)}
+      />
 
       <p className="text-muted-foreground">{product.description}</p>
 
@@ -178,8 +183,8 @@ function ProductInfo({ product }: { product: Product }) {
         </Disclosure>
         <Disclosure title="Delivery & Returns">
           <p>
-            Complimentary standard delivery in 2–4 business days, or express next-day delivery. Returns and exchanges are
-            free within 30 days of delivery.
+            Complimentary standard delivery in 2–4 business days, or express next-day delivery. Returns and exchanges
+            are free within 30 days of delivery.
           </p>
         </Disclosure>
       </div>

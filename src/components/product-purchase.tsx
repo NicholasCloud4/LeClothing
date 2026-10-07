@@ -1,29 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { CheckIcon } from "@/components/icons";
 import { StockStatus } from "@/components/stock-status";
 import { WishlistButton } from "@/components/wishlist-button";
+import { addToCart } from "@/lib/actions/cart";
 import type { Size } from "@/lib/catalog";
 
 type ProductPurchaseProps = {
+  productSlug: string;
   productName: string;
   sizes: Size[];
   oneSize: boolean;
 };
 
 /**
- * Size selection, live stock messaging and bag actions. Front-end only until the cart exists:
- * "Add to bag" and "Notify me" confirm locally.
+ * Size selection, live stock messaging and bag actions. "Add to bag" saves to the cart; "Notify me" still only
+ * confirms locally.
  */
-export function ProductPurchase({ productName, sizes, oneSize }: ProductPurchaseProps) {
+export function ProductPurchase({ productSlug, productName, sizes, oneSize }: ProductPurchaseProps) {
   const totalStock = sizes.reduce((total, size) => total + size.stock, 0);
   const soldOut = totalStock === 0;
 
   const [selectedLabel, setSelectedLabel] = useState<string | null>(oneSize && !soldOut ? sizes[0].label : null);
   const [missingSize, setMissingSize] = useState(false);
   const [added, setAdded] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
   const [notifyRequested, setNotifyRequested] = useState(false);
   const sizeGroupRef = useRef<HTMLDivElement>(null);
 
@@ -38,6 +42,7 @@ export function ProductPurchase({ productName, sizes, oneSize }: ProductPurchase
   function selectSize(label: string) {
     setSelectedLabel(label);
     setMissingSize(false);
+    setAddError(null);
     setAdded(false);
   }
 
@@ -47,7 +52,16 @@ export function ProductPurchase({ productName, sizes, oneSize }: ProductPurchase
       sizeGroupRef.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
       return;
     }
-    setAdded(true);
+    setAddError(null);
+    startTransition(async () => {
+      const result = await addToCart(productSlug, selected.label);
+      if (result.ok) {
+        setAdded(true);
+      } else {
+        setAdded(false);
+        setAddError(result.error);
+      }
+    });
   }
 
   return (
@@ -94,6 +108,8 @@ export function ProductPurchase({ productName, sizes, oneSize }: ProductPurchase
       <div id="stock-message" aria-live="polite" className="min-h-5">
         {missingSize ? (
           <p className="text-danger">Please select a size.</p>
+        ) : addError ? (
+          <p className="text-danger">{addError}</p>
         ) : selected && !oneSize ? (
           <StockStatus units={selected.stock} suffix={`in size ${selected.label}`} />
         ) : (
@@ -113,8 +129,16 @@ export function ProductPurchase({ productName, sizes, oneSize }: ProductPurchase
             </button>
           )
         ) : (
-          <button type="button" className="btn btn-primary btn-lg flex-1" onClick={addToBag}>
-            {added ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-lg flex-1"
+            onClick={addToBag}
+            disabled={pending}
+            aria-busy={pending}
+          >
+            {pending ? (
+              "Adding…"
+            ) : added ? (
               <>
                 <CheckIcon /> Added to bag
               </>

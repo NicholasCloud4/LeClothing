@@ -58,14 +58,17 @@ export function isOneSize(product: Product) {
 // ---------------------------------------------------------------------------
 // Formatting and routes
 
-const priceFormatter = new Intl.NumberFormat("en-US", {
+const wholeFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 0,
 });
 
+const centsFormatter = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+/** Whole-dollar amounts drop the cents ("$1,200"); anything else keeps them ("$1,200.50"). */
 export function formatPrice(cents: number) {
-  return priceFormatter.format(cents / 100);
+  return (cents % 100 === 0 ? wholeFormatter : centsFormatter).format(cents / 100);
 }
 
 export function productHref(product: Product) {

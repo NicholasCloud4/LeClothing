@@ -1,11 +1,11 @@
-// Loads the sample catalog into the database. Safe to re-run: categories and products are upserted
-// by slug, and each seeded product's images and stock are replaced.
+// Loads the sample catalog into the database. Safe to re-run: categories, products and stock are upserted
+// by key (a re-run resets stock quantities to the sample values), and each seeded product's images are replaced.
 //
 //   npm run db:seed
 
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
-import { inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "../src/lib/db/schema";
@@ -39,7 +39,12 @@ async function main() {
   const seededCollectionIds = db
     .select({ id: schema.collections.id })
     .from(schema.collections)
-    .where(inArray(schema.collections.slug, collections.map((collection) => collection.slug)));
+    .where(
+      inArray(
+        schema.collections.slug,
+        collections.map((collection) => collection.slug),
+      ),
+    );
 
   const categoryUpsert = db
     .insert(schema.categories)
@@ -86,7 +91,18 @@ async function main() {
     categoryUpsert,
     productUpsert,
     db.delete(schema.productImages).where(inArray(schema.productImages.productId, seededProductIds)),
-    db.delete(schema.productStock).where(inArray(schema.productStock.productId, seededProductIds)),
+    // Stock is upserted rather than replaced: cart lines reference these rows, and deleting them would cascade.
+    ...products.map((product) =>
+      db.delete(schema.productStock).where(
+        and(
+          eq(schema.productStock.productId, productId(product.slug)),
+          notInArray(
+            schema.productStock.size,
+            product.sizes.map((size) => size.size),
+          ),
+        ),
+      ),
+    ),
     db.insert(schema.productImages).values(
       products.flatMap((product) =>
         product.images.map((image, position) => ({
@@ -97,16 +113,22 @@ async function main() {
         })),
       ),
     ),
-    db.insert(schema.productStock).values(
-      products.flatMap((product) =>
-        product.sizes.map((size, position) => ({
-          productId: productId(product.slug),
-          size: size.size,
-          position,
-          quantity: size.quantity,
-        })),
-      ),
-    ),
+    db
+      .insert(schema.productStock)
+      .values(
+        products.flatMap((product) =>
+          product.sizes.map((size, position) => ({
+            productId: productId(product.slug),
+            size: size.size,
+            position,
+            quantity: size.quantity,
+          })),
+        ),
+      )
+      .onConflictDoUpdate({
+        target: [schema.productStock.productId, schema.productStock.size],
+        set: { position: sql`excluded.position`, quantity: sql`excluded.quantity` },
+      }),
     db
       .insert(schema.collections)
       .values(collections.map(({ slug, title, description, sortOrder }) => ({ slug, title, description, sortOrder })))
@@ -120,9 +142,7 @@ async function main() {
         },
       }),
     // Membership is replaced wholesale for the seeded collections, like images and stock.
-    db
-      .delete(schema.collectionProducts)
-      .where(inArray(schema.collectionProducts.collectionId, seededCollectionIds)),
+    db.delete(schema.collectionProducts).where(inArray(schema.collectionProducts.collectionId, seededCollectionIds)),
     db.insert(schema.collectionProducts).values(
       collections.flatMap((collection) =>
         collection.productSlugs.map((slug, position) => ({

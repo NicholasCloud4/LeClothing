@@ -2,10 +2,13 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { auth } from "@/lib/auth";
 
 /** The signed-in session, or null. Reads request headers, so call it inside a `<Suspense>` boundary. */
 export async function getSession() {
+  // Keeps the session query out of prerenders (including runtime prefetches), where Next would abort it mid-flight.
+  await connection();
   return auth.api.getSession({ headers: await headers() });
 }
 

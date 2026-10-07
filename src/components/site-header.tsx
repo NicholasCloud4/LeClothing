@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { BagIcon, HeartIcon, SearchIcon, UserIcon } from "@/components/icons";
 import { MenuDrawer } from "@/components/menu-drawer";
+import { getCartCount } from "@/lib/db/queries/cart";
 
 const iconButton = "btn btn-ghost btn-icon btn-sm";
 
@@ -36,12 +38,35 @@ export function SiteHeader() {
             <UserIcon />
             <span className="sr-only">Account</span>
           </Link>
-          <Link href="/cart" className={iconButton}>
+          <Link href="/cart" className={`${iconButton} relative`}>
             <BagIcon />
             <span className="sr-only">Shopping bag</span>
+            {/* Reads the cart cookie, so it streams in on its own and the rest of the header stays static. */}
+            <Suspense fallback={null}>
+              <CartBadge />
+            </Suspense>
           </Link>
         </nav>
       </div>
     </header>
+  );
+}
+
+async function CartBadge() {
+  const count = await getCartCount();
+  if (count === 0) return null;
+
+  return (
+    <>
+      <span className="sr-only">
+        , {count} {count === 1 ? "item" : "items"}
+      </span>
+      <span
+        aria-hidden="true"
+        className="absolute top-1 right-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-2xs text-primary-foreground"
+      >
+        {count}
+      </span>
+    </>
   );
 }

@@ -63,10 +63,16 @@ export async function getCollection(
   const view = await resolve(slug, sort);
   if (!view) return undefined;
 
-  return { ...view, products: inStockOnly ? view.products.filter((product) => getTotalStock(product) > 0) : view.products };
+  return {
+    ...view,
+    products: inStockOnly ? view.products.filter((product) => getTotalStock(product) > 0) : view.products,
+  };
 }
 
-function productOrder(sort: CollectionSort | undefined, product: { priceCents: AnyColumn; createdAt: AnyColumn }): SQL[] {
+function productOrder(
+  sort: CollectionSort | undefined,
+  product: { priceCents: AnyColumn; createdAt: AnyColumn },
+): SQL[] {
   if (sort === "price-asc") return [asc(product.priceCents), desc(product.createdAt)];
   if (sort === "price-desc") return [desc(product.priceCents), desc(product.createdAt)];
   return [desc(product.createdAt)];

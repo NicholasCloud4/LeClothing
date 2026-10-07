@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { safeNextPath } from "@/lib/auth-session";
+import { mergeGuestCart } from "@/lib/db/mutations/cart";
 
 export type AuthFormState = {
   error?: string;
@@ -42,13 +43,24 @@ function fieldErrors(error: z.ZodError): AuthFormState["fieldErrors"] {
   };
 }
 
+/** A failed merge must not fail the sign-in: the guest cart just stays where it is. */
+async function adoptGuestCart(userId: string) {
+  try {
+    await mergeGuestCart(userId);
+  } catch (error) {
+    console.error("Could not merge the guest cart", error);
+  }
+}
+
 export async function signInAction(_previous: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const values = { email: field(formData, "email") };
   const parsed = signInSchema.safeParse({ email: values.email, password: field(formData, "password") });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), values };
 
+  let userId: string;
   try {
-    await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
+    const result = await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
+    userId = result.user.id;
   } catch (error) {
     if (error instanceof APIError) {
       // One message for unknown email and wrong password, so the form doesn't reveal which accounts exist.
@@ -57,6 +69,7 @@ export async function signInAction(_previous: AuthFormState, formData: FormData)
     throw error;
   }
 
+  await adoptGuestCart(userId);
   redirect(safeNextPath(formData.get("next")));
 }
 
@@ -65,8 +78,10 @@ export async function signUpAction(_previous: AuthFormState, formData: FormData)
   const parsed = signUpSchema.safeParse({ ...values, password: field(formData, "password") });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error), values };
 
+  let userId: string;
   try {
-    await auth.api.signUpEmail({ body: parsed.data, headers: await headers() });
+    const result = await auth.api.signUpEmail({ body: parsed.data, headers: await headers() });
+    userId = result.user.id;
   } catch (error) {
     if (error instanceof APIError) {
       return { error: "We couldn't create that account. If you already have one, try signing in.", values };
@@ -74,6 +89,7 @@ export async function signUpAction(_previous: AuthFormState, formData: FormData)
     throw error;
   }
 
+  await adoptGuestCart(userId);
   redirect(safeNextPath(formData.get("next")));
 }
 

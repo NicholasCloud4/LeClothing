@@ -22,6 +22,13 @@
       "when": 1791390632954,
       "tag": "0002_cold_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791390844898,
+      "tag": "0003_stormy_king_cobra",
+      "breakpoints": true
     }
   ]
 }

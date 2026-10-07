@@ -90,7 +90,11 @@ async function CollectionContent({
                 return (
                   <li key={option.value}>
                     <Link
-                      href={collectionHref(slug, option.value === collection.defaultSort ? undefined : option.value, inStockOnly)}
+                      href={collectionHref(
+                        slug,
+                        option.value === collection.defaultSort ? undefined : option.value,
+                        inStockOnly,
+                      )}
                       aria-current={active ? "true" : undefined}
                       className={active ? "link" : "link-muted"}
                     >
@@ -126,10 +130,7 @@ async function CollectionContent({
                 ? "Try a different sort or show everything in this collection."
                 : "We have nothing in this collection yet. Have a look at what's just arrived."}
             </p>
-            <Link
-              href={filtered ? `/collections/${slug}` : "/collections/new-arrivals"}
-              className="btn btn-secondary"
-            >
+            <Link href={filtered ? `/collections/${slug}` : "/collections/new-arrivals"} className="btn btn-secondary">
               {filtered ? "Clear filters" : "Shop new arrivals"}
             </Link>
           </div>
