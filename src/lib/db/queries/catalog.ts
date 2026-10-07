@@ -67,6 +67,19 @@ export async function getProduct(slug: string): Promise<Product | undefined> {
   return row && toProduct(row);
 }
 
+/** The whole catalog, newest first. Fine at the current size (the wishlist filters it in the browser). */
+export async function getAllProducts(): Promise<Product[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CATALOG_TAG);
+
+  const rows = await db.query.products.findMany({
+    with: withRelations,
+    orderBy: (product, { desc }) => [desc(product.createdAt)],
+  });
+  return rows.map(toProduct);
+}
+
 /** Newest products first. */
 export async function getNewArrivals(limit = 8): Promise<Product[]> {
   "use cache";

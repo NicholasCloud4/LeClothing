@@ -23,7 +23,7 @@ export function ProductCard({ product, sizes }: { product: Product; sizes: strin
           </p>
         </div>
       </Link>
-      <WishlistButton productName={product.name} className="absolute top-2 right-2" />
+      <WishlistButton productSlug={product.slug} productName={product.name} className="absolute top-2 right-2" />
     </article>
   );
 }

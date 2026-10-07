@@ -27,14 +27,9 @@ async function CartContents() {
       <div className="flex flex-col items-center gap-4 py-section text-center">
         <p className="heading-3">Your bag is empty</p>
         <p className="max-w-sm text-muted-foreground">When you add something, it will wait for you here.</p>
-        <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-          <Link href="/collections/new-arrivals" className="btn btn-primary">
-            Shop new arrivals
-          </Link>
-          <Link href="/collections/women" className="btn btn-secondary">
-            Shop women
-          </Link>
-        </div>
+        <Link href="/collections/new-arrivals" className="btn btn-primary mt-2">
+          Shop new arrivals
+        </Link>
       </div>
     );
   }

@@ -147,7 +147,7 @@ export function ProductPurchase({ productSlug, productName, sizes, oneSize }: Pr
             )}
           </button>
         )}
-        <WishlistButton productName={productName} variant="secondary" size="lg" />
+        <WishlistButton productSlug={productSlug} productName={productName} variant="secondary" size="lg" />
       </div>
 
       <p role="status" className="sr-only">
