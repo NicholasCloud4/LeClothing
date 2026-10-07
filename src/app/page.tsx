@@ -5,7 +5,8 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { ProductCard } from "@/components/product-card";
 import { ProductRail } from "@/components/product-rail";
 import { SectionHeading } from "@/components/section-heading";
-import { boutique, collections, essentials, features, hero, newArrivals } from "@/lib/catalog";
+import { boutique, collections, essentialSlugs, features, hero } from "@/lib/content";
+import { getNewArrivals, getProductsBySlugs } from "@/lib/db/queries/catalog";
 
 const services = [
   { icon: TruckIcon, title: "Complimentary Shipping", body: "On every order, delivered in signature packaging." },
@@ -105,7 +106,9 @@ function Categories() {
   );
 }
 
-function NewArrivals() {
+async function NewArrivals() {
+  const newArrivals = await getNewArrivals();
+
   return (
     <section aria-labelledby="new-arrivals-title" className="shell section border-t">
       <SectionHeading
@@ -149,7 +152,9 @@ function FeaturedCollections() {
   );
 }
 
-function Essentials() {
+async function Essentials() {
+  const essentials = await getProductsBySlugs(essentialSlugs);
+
   return (
     <section aria-labelledby="essentials-title" className="shell section">
       <SectionHeading

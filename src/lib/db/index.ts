@@ -5,7 +5,7 @@ import * as schema from "./schema";
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  throw new Error("DATABASE_URL is not set. Copy .env.example to .env.local.");
+  throw new Error("DATABASE_URL is not set. Copy .env.example to .env.");
 }
 
 const sql = neon(databaseUrl);

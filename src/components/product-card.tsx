@@ -18,7 +18,7 @@ export function ProductCard({ product, sizes }: { product: Product; sizes: strin
           {label && <p className="eyebrow text-2xs text-muted-foreground">{label}</p>}
           <h3 className="font-sans text-sm tracking-body">{product.name}</h3>
           <p className="price text-muted-foreground">
-            {formatPrice(product.price)}
+            {formatPrice(product.priceCents)}
             {product.colors > 1 && <span className="ml-2">· {product.colors} colors</span>}
           </p>
         </div>

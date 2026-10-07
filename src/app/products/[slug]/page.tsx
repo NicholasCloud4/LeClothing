@@ -8,24 +8,16 @@ import { ProductGallery } from "@/components/product-gallery";
 import { ProductPurchase } from "@/components/product-purchase";
 import { ProductRail } from "@/components/product-rail";
 import { SectionHeading } from "@/components/section-heading";
-import {
-  categoryHref,
-  formatPrice,
-  getProduct,
-  getRelatedProducts,
-  getTotalStock,
-  isOneSize,
-  productHref,
-  products,
-  type Product,
-} from "@/lib/catalog";
+import { categoryHref, formatPrice, getTotalStock, isOneSize, productHref, type Product } from "@/lib/catalog";
+import { getProduct, getProductSlugs, getRelatedProducts } from "@/lib/db/queries/catalog";
 
-export function generateStaticParams() {
-  return products.map((product) => ({ slug: product.slug }));
+export async function generateStaticParams() {
+  const slugs = await getProductSlugs();
+  return slugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
-  const product = getProduct((await params).slug);
+  const product = await getProduct((await params).slug);
   if (!product) return {};
 
   return {
@@ -46,10 +38,10 @@ export default function ProductPage({ params }: PageProps<"/products/[slug]">) {
 }
 
 async function ProductDetail({ params }: Pick<PageProps<"/products/[slug]">, "params">) {
-  const product = getProduct((await params).slug);
+  const product = await getProduct((await params).slug);
   if (!product) notFound();
 
-  const related = getRelatedProducts(product);
+  const related = await getRelatedProducts(product);
 
   return (
     <>
@@ -65,7 +57,7 @@ async function ProductDetail({ params }: Pick<PageProps<"/products/[slug]">, "pa
           <li aria-hidden="true">/</li>
           <li>
             <Link href={categoryHref(product.category)} className="link-muted">
-              {product.category}
+              {product.category.name}
             </Link>
           </li>
           <li aria-hidden="true">/</li>
@@ -135,7 +127,7 @@ function ProductInfo({ product }: { product: Product }) {
       <header className="flex flex-col gap-3">
         <div className="eyebrow flex items-center gap-2 text-muted-foreground">
           <Link href={categoryHref(product.category)} className="link-muted">
-            {product.category}
+            {product.category.name}
           </Link>
           {product.isNew && (
             <>
@@ -145,7 +137,7 @@ function ProductInfo({ product }: { product: Product }) {
           )}
         </div>
         <h1 className="heading-2">{product.name}</h1>
-        <p className="price text-lg">{formatPrice(product.price)}</p>
+        <p className="price text-lg">{formatPrice(product.priceCents)}</p>
         <p className="text-muted-foreground">
           Color: <span className="text-foreground">{product.color}</span>
           {product.colors > 1 && <> · Available in {product.colors} colors</>}
@@ -215,12 +207,12 @@ function ProductJsonLd({ product }: { product: Product }) {
     name: product.name,
     description: product.description,
     image: product.images.map((image) => image.src),
-    category: product.category,
+    category: product.category.name,
     color: product.color,
     url: productHref(product),
     offers: {
       "@type": "Offer",
-      price: product.price,
+      price: product.priceCents / 100,
       priceCurrency: "USD",
       availability: `https://schema.org/${getTotalStock(product) > 0 ? "InStock" : "OutOfStock"}`,
     },
