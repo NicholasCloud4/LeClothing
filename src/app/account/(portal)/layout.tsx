@@ -1,6 +1,12 @@
 import { Suspense } from "react";
-import { AccountNav } from "@/components/account-nav";
+import { TabNav, type TabLink } from "@/components/tab-nav";
 import { signOutAction } from "@/lib/actions/auth";
+
+const links: TabLink[] = [
+  { label: "Overview", href: "/account" },
+  { label: "Orders", href: "/account/orders" },
+  { label: "Addresses", href: "/account/addresses" },
+];
 
 export default function AccountLayout({ children }: LayoutProps<"/account">) {
   return (
@@ -15,7 +21,7 @@ export default function AccountLayout({ children }: LayoutProps<"/account">) {
       </div>
       {/* usePathname() is request data on dynamic routes, so the tabs resolve inside Suspense. */}
       <Suspense fallback={<div aria-hidden="true" className="h-12 border-b" />}>
-        <AccountNav />
+        <TabNav label="Account" links={links} />
       </Suspense>
       <div className="pt-10">{children}</div>
     </div>

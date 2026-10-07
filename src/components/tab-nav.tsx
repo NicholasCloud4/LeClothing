@@ -3,20 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const links = [
-  { label: "Overview", href: "/account" },
-  { label: "Orders", href: "/account/orders" },
-  { label: "Addresses", href: "/account/addresses" },
-];
+export type TabLink = { label: string; href: string };
 
-export function AccountNav() {
+/**
+ * Section tabs (account, admin). The first link is the section's index page and is only active on an exact match.
+ * Uses `usePathname()`, so render it inside `<Suspense>`.
+ */
+export function TabNav({ label, links }: { label: string; links: TabLink[] }) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Account" className="border-b">
+    <nav aria-label={label} className="border-b">
       <ul className="-mb-px flex gap-6">
-        {links.map((link) => {
-          const active = link.href === "/account" ? pathname === link.href : pathname.startsWith(link.href);
+        {links.map((link, index) => {
+          const active = index === 0 ? pathname === link.href : pathname.startsWith(link.href);
           return (
             <li key={link.href}>
               <Link

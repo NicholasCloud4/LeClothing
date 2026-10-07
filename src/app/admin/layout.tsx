@@ -1,4 +1,11 @@
+import { Suspense } from "react";
+import { TabNav, type TabLink } from "@/components/tab-nav";
 import { signOutAction } from "@/lib/actions/auth";
+
+const links: TabLink[] = [
+  { label: "Overview", href: "/admin" },
+  { label: "Products", href: "/admin/products" },
+];
 
 // No auth check here: layouts don't re-render on client navigation. Every admin page calls `requireAdmin()`.
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
@@ -12,7 +19,10 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
           </button>
         </form>
       </div>
-      {children}
+      <Suspense fallback={<div aria-hidden="true" className="h-12 border-b" />}>
+        <TabNav label="Admin" links={links} />
+      </Suspense>
+      <div className="pt-10">{children}</div>
     </div>
   );
 }

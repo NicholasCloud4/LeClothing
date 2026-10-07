@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
 
 type FormFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "id" | "className"> & {
   label: string;
@@ -24,6 +24,46 @@ export function FormField({ label, error, hint, className = "", ...inputProps }:
         {...inputProps}
         id={id}
         className="input"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy || undefined}
+      />
+      {hint && !error && (
+        <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={`${id}-error`} className="text-xs text-danger">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+type TextAreaFieldProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "id" | "className"> & {
+  label: string;
+  name: string;
+  error?: string;
+  hint?: string;
+  className?: string;
+};
+
+/** `FormField` for multi-line text. */
+export function TextAreaField({ label, error, hint, className = "", rows = 4, ...textareaProps }: TextAreaFieldProps) {
+  const id = useId();
+  const describedBy = [error ? `${id}-error` : null, hint ? `${id}-hint` : null].filter(Boolean).join(" ");
+
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <label htmlFor={id} className="text-sm">
+        {label}
+      </label>
+      <textarea
+        {...textareaProps}
+        id={id}
+        rows={rows}
+        className="input h-auto py-3"
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
       />

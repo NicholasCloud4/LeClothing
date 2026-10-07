@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth-session";
 
@@ -16,8 +17,13 @@ async function AdminOverview() {
   const user = await requireAdmin("/admin");
 
   return (
-    <p className="text-muted-foreground">
-      Signed in as {user.name} ({user.email}).
-    </p>
+    <div className="flex flex-col gap-4">
+      <p className="text-muted-foreground">
+        Signed in as {user.name} ({user.email}).
+      </p>
+      <Link href="/admin/products" className="link self-start">
+        Edit products and stock
+      </Link>
+    </div>
   );
 }
