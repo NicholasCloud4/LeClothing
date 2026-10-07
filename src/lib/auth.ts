@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 
@@ -10,4 +11,11 @@ export const auth = betterAuth({
     provider: "pg",
     schema,
   }),
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    // Email verification and password reset need a mail provider; add them with transactional email.
+  },
+  // Must stay last: lets Server Actions set the session cookie.
+  plugins: [nextCookies()],
 });
